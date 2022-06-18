@@ -72,13 +72,23 @@ export class FoamWorkspace implements IDisposable {
   }
 
   public listByIdentifier(identifier: string): Resource[] {
-    const needle = normalize('/' + identifier);
-    const mdNeedle =
-      getExtension(needle) !== '.md' ? needle + '.md' : undefined;
+    const needles = new Set<string>();
+    needles.add(normalize('/' + identifier));
+    needles.add(normalize('/' + identifier.replace('/', '.')));
+    needles.add((normalize('/' + identifier) + '.md').replace('.md.md', '.md'));
+    needles.add(
+      (normalize('/' + identifier.replace('/', '.')) + '.md').replace(
+        '.md.md',
+        '.md'
+      )
+    );
+
     const resources = new Set<Resource>();
     for (const key of this._resources.keys()) {
-      if ((mdNeedle && key.endsWith(mdNeedle)) || key.endsWith(needle)) {
-        resources.add(this._resources.get(normalize(key)));
+      for (const needle of needles) {
+        if (key.endsWith(needle)) {
+          resources.add(this._resources.get(normalize(key)));
+        }
       }
     }
     if (this._resources_alias.has(identifier)) {

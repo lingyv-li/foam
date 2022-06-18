@@ -27,12 +27,31 @@ export interface ParserPlugin {
 
 const ALIAS_DIVIDER_CHAR = '|';
 
+function logseqFrontmatterPlugin() {
+  const data = this.data();
+
+  function add(field, value) {
+    if (data[field]) data[field].push(value);
+    else data[field] = [value];
+  }
+
+  add('logseqFrontmatterExtensions', tree => {
+    Logger.info(tree);
+    visit(tree, (node: Node) => {
+      if (node.type === 'heading') {
+        // node.depth++
+      }
+    });
+  });
+}
+
 export function createMarkdownParser(
   extraPlugins: ParserPlugin[]
 ): ResourceParser {
   const parser = unified()
     .use(markdownParse, { gfm: true })
     .use(frontmatterPlugin, ['yaml'])
+    .use(logseqFrontmatterPlugin)
     .use(wikiLinkPlugin, { aliasDivider: ALIAS_DIVIDER_CHAR });
 
   const plugins = [
@@ -92,7 +111,33 @@ export function createMarkdownParser(
         }
       }
       visit(tree, node => {
-        if (node.type === 'yaml') {
+        if (node.type === 'text') {
+          const lines: Array<string> = (node as any).value.split('\n');
+          if (lines.every(l => l.match('^[^\\s.]+:: .*$'))) {
+            const yamlProperties = lines.reduce((obj, l) => {
+              const [_, k, v] = l.match('^([^\\s.]+):: (.*)$');
+              obj[k] = v;
+              return obj;
+            }, {});
+            note.properties = {
+              ...note.properties,
+              ...yamlProperties,
+            };
+            // Update the start position of the note by exluding the metadata
+            note.source.contentStart = Position.create(
+              node.position!.end.line! + 0,
+              0
+            );
+
+            for (const plugin of plugins) {
+              try {
+                plugin.onDidFindProperties?.(yamlProperties, note, node);
+              } catch (e) {
+                handleError(plugin, 'onDidFindProperties', uri, e);
+              }
+            }
+          }
+        } else if (node.type === 'yaml') {
           try {
             const yamlProperties = parseYAML((node as any).value) ?? {};
             note.properties = {
