@@ -72,7 +72,7 @@ export class FoamWorkspace implements IDisposable {
   }
 
   public listByIdentifier(identifier: string): Resource[] {
-    const needle = normalize('/' + identifier);
+    const needle = normalize('/' + identifier.replace('/', '.'));
     const mdNeedle =
       getExtension(needle) !== '.md' ? needle + '.md' : undefined;
     const resources = new Set<Resource>();
