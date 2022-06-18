@@ -21,6 +21,11 @@ export class FoamWorkspace implements IDisposable {
    */
   private _resources: Map<string, Resource> = new Map();
 
+  /**
+   * Resources by alias
+   */
+  private _resources_alias: Map<string, Resource> = new Map();
+
   registerProvider(provider: ResourceProvider) {
     this.providers.push(provider);
     return provider.init(this);
@@ -29,6 +34,7 @@ export class FoamWorkspace implements IDisposable {
   set(resource: Resource) {
     const old = this.find(resource.uri);
     this._resources.set(normalize(resource.uri.path), resource);
+    resource.aliases.forEach(a => this._resources_alias.set(a.title, resource));
     isSome(old)
       ? this.onDidUpdateEmitter.fire({ old: old, new: resource })
       : this.onDidAddEmitter.fire(resource);
@@ -38,6 +44,7 @@ export class FoamWorkspace implements IDisposable {
   delete(uri: URI) {
     const deleted = this._resources.get(normalize(uri.path));
     this._resources.delete(normalize(uri.path));
+    deleted.aliases.forEach(a => this._resources_alias.delete(a.title));
 
     isSome(deleted) && this.onDidDeleteEmitter.fire(deleted);
     return deleted ?? null;
@@ -68,13 +75,16 @@ export class FoamWorkspace implements IDisposable {
     const needle = normalize('/' + identifier);
     const mdNeedle =
       getExtension(needle) !== '.md' ? needle + '.md' : undefined;
-    const resources = [];
+    const resources = new Set<Resource>();
     for (const key of this._resources.keys()) {
       if ((mdNeedle && key.endsWith(mdNeedle)) || key.endsWith(needle)) {
-        resources.push(this._resources.get(normalize(key)));
+        resources.add(this._resources.get(normalize(key)));
       }
     }
-    return resources.sort((a, b) => a.uri.path.localeCompare(b.uri.path));
+    if (this._resources_alias.has(identifier)) {
+      resources.add(this._resources_alias.get(identifier));
+    }
+    return [...resources].sort((a, b) => a.uri.path.localeCompare(b.uri.path));
   }
 
   /**

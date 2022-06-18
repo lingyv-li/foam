@@ -186,4 +186,14 @@ describe('Identifier computation', () => {
       workspace.getIdentifier(noteABis.uri, [noteB.uri, noteA.uri])
     ).toEqual('note-a');
   });
+
+  it('should find resource by alias', () => {
+    const workspace = new FoamWorkspace();
+    const noteA = createTestNote({
+      uri: '/path/to/note-a.md',
+      aliases: ['alias-a'],
+    });
+    workspace.set(noteA);
+    expect(workspace.find('alias-a')).toEqual(noteA);
+  });
 });
