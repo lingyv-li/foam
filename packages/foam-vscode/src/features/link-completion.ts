@@ -199,6 +199,21 @@ export class CompletionProvider
       item.commitCharacters = linkCommitCharacters;
       return item;
     });
+    resources.push(
+      ...this.ws.list().flatMap(resource =>
+        resource.aliases.map(a => {
+          const item = new ResourceCompletionItem(
+            a.title,
+            vscode.CompletionItemKind.File,
+            resource.uri
+          );
+          item.range = replacementRange;
+          item.command = COMPLETION_CURSOR_MOVE;
+          item.commitCharacters = linkCommitCharacters;
+          return item;
+        })
+      )
+    );
     const placeholders = Array.from(this.graph.placeholders.values()).map(
       uri => {
         const item = new vscode.CompletionItem(
